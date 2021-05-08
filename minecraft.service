@@ -1,0 +1,15 @@
+[Unit]
+Description=minecraft server service
+After=network-online.target # postgresql.service
+
+[Service]
+User=@USER@
+WorkingDirectory=@DIR@
+Type=forking
+ExecStart=/bin/bash @DIR@/start.sh
+ExecStop=/bin/bash @DIR@/stop.sh
+GuessMainPID=no
+TimeoutStartSec=1200
+
+[Install]
+WantedBy=multi-user.target
