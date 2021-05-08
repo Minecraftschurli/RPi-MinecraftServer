@@ -4,7 +4,13 @@
 USER="@USER@"
 DIR="@DIR@"
 
-if [ "$(whoami)" != "$USER" ]; then dir=$(pwd); cd $DIR/; sudo -u $USER ./restart.sh; cd $dir; exit 0; fi
+if [ "$(whoami)" != "$USER" ]; then
+  dir=$(pwd)
+  cd $DIR/
+  sudo -u $USER ./restart.sh
+  cd "$dir"
+  exit 0
+fi
 
 # Check if server is running
 if ! screen -list | grep -q "\.minecraft"; then

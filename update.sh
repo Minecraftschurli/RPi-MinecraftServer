@@ -23,6 +23,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # change to server directory
+CWD=$(pwd)
 cd $DIR
 
 # check server status
@@ -45,18 +46,16 @@ if ! [[ ${force} == true ]]; then
   done
   if [[ $choice =~ ^[Yy]$ ]]; then
     # grep latest verion from papermc.io
-    Version=$(wget -q -O - https://papermc.io/api/v2/projects/paper | rev | cut -d, -f1 | rev)
-    Version="${Version:1}"
-    Version="${Version::-3}"
+    Version=$(wget -q -O - https://papermc.io/api/v2/projects/paper | \
+              python3 -c "import sys, json; print(json.load(sys.stdin)['versions'][-1])")
     echo "latest server version seems to be ${Version}"
   else
     read -p "Please enter the version you want to update to: " Version
 	# check if version is available
-    wget --spider --quiet https://papermc.io/api/v1/paper/${Version}/latest/download
-	if [ "$?" != 0 ]; then
+    URL="https://papermc.io/api/v1/paper/${Version}/latest/download"
+	  if ! wget --spider --quiet "$URL"; then
       echo "The version you entered doesn't seem to exist!"
-	  exit 1
-    else
+	    exit 1
     fi
   fi
 fi
@@ -65,14 +64,14 @@ fi
 echo "trying to update to version ${Version} ..."
 
 # test if papermc is avalable and update on success
-wget --spider --quiet https://papermc.io/api/v1/paper/${Version}/latest/download
-if [ "$?" != 0 ]; then
+if ! wget --spider --quiet "$URL"; then
   echo "Warning: Unable to connect to papermc API. Skipping update..."
 else
   echo "Success: Updating to latest papermc version..."
   rm paperclip.jar
-  wget -q -O paperclip.jar https://papermc.io/api/v1/paper/${Version}/latest/download
+  wget -q -O paperclip.jar "$URL"
 fi
 
 # execute start script
 ./start.sh
+cd "$CWD"

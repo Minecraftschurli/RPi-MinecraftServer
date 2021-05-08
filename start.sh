@@ -3,6 +3,7 @@
 
 VERSION="@VERSION@"
 DIR="@DIR@"
+MEM="@MEM@"
 
 # Flush out memory to disk so we have the maximum available for Java allocation
 sudo ./clear_cache.sh
@@ -78,13 +79,13 @@ fi
 echo "Updating to most recent paperclip version ..."
 
 # Test internet connectivity first
-wget --spider --quiet https://papermc.io/api/v1/paper/$VERSION/latest/download
-if [ "$?" != 0 ]; then
+PAPER_URL="https://papermc.io/api/v1/paper/$VERSION/latest/download"
+if ! wget --spider --quiet "$PAPER_URL"; then
     echo "Unable to connect to update website (internet connection may be down).  Skipping update ..."
 else
-    wget -O paperclip.jar https://papermc.io/api/v1/paper/$VERSION/latest/download
+    wget -O paperclip.jar "$PAPER_URL"
 fi
 
 echo "Starting Minecraft server.  To view window type screen -r minecraft."
 echo "To minimize the window and let the server run in the background, press Ctrl+A then Ctrl+D"
-screen -dmS minecraft java -jar -Xms400M -Xmx5G $DIR/paperclip.jar
+screen -dmS minecraft java -jar -Xms400M -Xmx${MEM} $DIR/paperclip.jar

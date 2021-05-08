@@ -125,7 +125,7 @@ InstallJava() {
   fi
 
   # Install OpenJDK 9 as a fallback
-  if [ ! -n "$(which java)" ]; then
+  if [ -z "$(which java)" ]; then
     JavaVer=$(apt-cache show openjdk-9-jre-headless | grep Version | awk 'NR==1{ print $2 }')
     if [[ "$JavaVer" ]]; then
       apt-get install openjdk-9-jre-headless -y
@@ -155,8 +155,7 @@ GetMCVersion() {
     if [[ "$answer" == "y" ]]; then
       PrintStyle "Getting Paper Minecraft server v$mcVer..." "$YELLOW"
       PAPER_URL="https://papermc.io/api/v1/paper/$mcVer/latest/download"
-      wget --spider --quiet "$PAPER_URL"
-      if [ $? -ne 0 ]; then 
+      if wget --spider --quiet "$PAPER_URL"; then
         PrintStyle "$mcVer is not a valid version, please try again" "$RED"
         answer="n"
       fi
@@ -168,33 +167,38 @@ GetMCVersion() {
 # Create the user to run the server as
 CreateUser() {
   PrintStyle "Creating user $USER for Minecraft Server" "$YELLOW"
-  adduser --system --home $DIR $USER
+  adduser --home $DIR $USER
+  adduser "$(logname)" $USER
 }
 
 # Get all scripts
 GetScripts() {
-  CWD=$(pwd)
-  cd $DIR
   PrintStyle "Getting scripts from repository..." "$YELLOW"
   for SCRIPT in $SCRIPTS; do
-    wget -O $SCRIPT $URL/$SCRIPT
-    chmod +x $SCRIPT
-    sed -i "s+@VERSION@+$VERSION+g" $SCRIPT
-    sed -i "s+@DIR@+$DIR+g" $SCRIPT
-    sed -i "s+@USER@+$USER+g" $SCRIPT
+    wget -O "$SCRIPT" "$URL/$SCRIPT"
+    chmod +x "$SCRIPT"
+    sed -i "s+@VERSION@+$VERSION+g" "$SCRIPT"
+    sed -i "s+@DIR@+$DIR+g" "$SCRIPT"
+    sed -i "s+@USER@+$USER+g" "$SCRIPT"
+    sed -i "s+@MEM@+${MemSelected}M+g" "$SCRIPT"
   done
   PrintStyle "Getting helper scripts from repository..." "$YELLOW"
   for SCRIPT in $HELPERS; do
-    wget -O $SCRIPT $URL/$SCRIPT
-	echo ". ~/$SCRIPT" >> .bash_aliases
+    wget -O "$SCRIPT" "$URL/$SCRIPT"
+	  echo ". ~/$SCRIPT" >> .bash_aliases
   done
-  echo "connect" >> .bashrc
-  cd $CWD
+  {
+    echo "cd ~";
+    echo "connect";
+    echo "if [[ \$(logname) == $USER ]]; then";
+    echo "  exit";
+    echo "fi"
+  } >> .bashrc
 }
 
 # Updates Minecraft service
 GetService() {
-  wget -O /etc/systemd/system/minecraft.service $URL/minecraft.service
+  wget -O /etc/systemd/system/minecraft.service "$URL/minecraft.service"
   chmod +x /etc/systemd/system/minecraft.service
   sed -i "s+@DIR@+$DIR+g" /etc/systemd/system/minecraft.service
   sed -i "s+@USER@+$USER+g" /etc/systemd/system/minecraft.service
@@ -231,7 +235,7 @@ ConfigureReboot() {
 InstallRequirements() {
   # Install dependencies needed to run minecraft in the background
   PrintStyle "Installing screen, sudo, net-tools, wget..." "$YELLOW"
-  if [ ! -n "$(which sudo)" ]; then
+  if [ -z "$(which sudo)" ]; then
     apt-get update && apt-get install sudo -y
   fi
   apt-get update
@@ -241,12 +245,9 @@ InstallRequirements() {
 
 # Accept the Minecraft EULA
 AcceptEULA() {
-  CWD=$(pwd)
-  cd $DIR
   # Accept the EULA
   PrintStyle "Accepting the EULA..." "$GREEN"
   echo eula=true > eula.txt
-  cd $CWD
 }
 
 # Configure the server
@@ -254,8 +255,10 @@ ConfigureServer() {
   # Server configuration
   PrintStyle "Enter a name for your server..." "$MAGENTA"
   read -p 'Server Name: ' servername
-  echo "server-name=$servername" >> server.properties
-  echo "motd=$servername" >> server.properties
+  {
+    echo "server-name=$servername";
+    echo "motd=$servername"
+  } >> server.properties
 }
 
 # Set the owner for all files
@@ -265,9 +268,13 @@ FixOwner() {
 
 # Fix execution permissions for clear_cache, reboot and mount
 FixPermissions() {
-  echo "$USER ALL=(ALL) NOPASSWD: $DIR/clear_cache.sh" >> /etc/sudoers
-  echo "$USER ALL=(ALL) NOPASSWD: /sbin/reboot" >> /etc/sudoers
-  echo "$USER ALL=(ALL) NOPASSWD: /bin/mount" >> /etc/sudoers
+  {
+    echo "$USER ALL=(ALL) NOPASSWD: $DIR/clear_cache.sh";
+    echo "$USER ALL=(ALL) NOPASSWD: /sbin/reboot";
+    echo "$USER ALL=(ALL) NOPASSWD: /bin/mount"
+  } >> /etc/sudoers
+  chown root "$DIR/clear_cache.sh"
+  chmod 755 "$DIR/clear_cache.sh"
 }
 
 # Start the Minecraft Server
@@ -304,6 +311,8 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+CWD="$(pwd)"
+cd "$DIR"
 InstallJava
 GetServerMemory
 CreateUser
@@ -315,3 +324,4 @@ GetService
 FixOwner
 FixPermissions
 StartServer
+cd "$CWD"

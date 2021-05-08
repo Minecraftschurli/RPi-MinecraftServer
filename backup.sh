@@ -81,22 +81,22 @@ if [[ "$FULL" == YES ]]; then
     FILE_NAME=$BACKUP_FOLDER/$BACKUP_NAME$EXT
     echo "Backing up server to \"$FILE_NAME\""
     if [[ "$TEST" == NO ]]; then
-        tar --exclude=$BACKUP_FOLDER --exclude='./cache' --exclude='./logs/*.log.gz' --exclude='./paperclip.jar' --exclude='./plugins/dynmap/web' -pzcf $FILE_NAME ./*
+        tar --exclude=$BACKUP_FOLDER --exclude='./cache' --exclude='./logs/*.log.gz' --exclude='./paperclip.jar' --exclude='./plugins/dynmap/web' -pzcf "$FILE_NAME" ./*
         rm ./db_dump
     fi
 else
     echo "Backing up worlds: ${WORLDS[@]}"
     for (( i=0; i<${#WORLDS[@]}; i++ )); do
         WORLD_NAME=${WORLDS[$i]}
-        if [ -d ./$WORLD_NAME ]; then
+        if [ -d "./$WORLD_NAME" ]; then
             BACKUP_NAME="WORLD_BACKUP_${WORLD_NAME}_${TIMESTAMP}"
             FILE_NAME=$BACKUP_FOLDER/$BACKUP_NAME$EXT
             echo "Backing up world \"$WORLD_NAME\" to \"$FILE_NAME\""
             if [[ "$TEST" == NO ]]; then
-                tar -pzcf $FILE_NAME ./$WORLD_NAME
+                tar -pzcf "$FILE_NAME" "./$WORLD_NAME"
             fi
         else
-            echo "World \"$WORLDNAME\" does not extst! skipping..."
+            echo "World \"$WORLD_NAME\" does not extst! skipping..."
         fi
     done
 fi
@@ -104,43 +104,43 @@ fi
 THRESHOLD=$(date -d "$KEEP_FOR ago" +%s)
 
 echo "Removing automatic Backups older than $KEEP_FOR"
-FILES=$BACKUP_FOLDER/AUTOMATIC*$EXT
+FILES="$BACKUP_FOLDER/AUTOMATIC*$EXT"
 for file in $FILES; do
     if [[ "$file" == "$FILES" ]]; then break; fi
     date=${file#*}
     date=${date%$EXT}
-    date=`echo $date| rev `
+    date=$(echo "$date" | rev )
     date=${date:0:19}
-    date=`echo $date| rev `
+    date=$(echo "$date" | rev )
     date=${date/_/T}
-    if [[ $(date -d $date +%s) -le $THRESHOLD ]]; then
+    if [[ $(date -d "$date" +%s) -le $THRESHOLD ]]; then
         echo "Removing $file"
         if [[ "$TEST" == NO ]]; then
-            rm $file
+            rm "$file"
         fi
     fi
 done
 if [[ "$ENABLE_LEGACY" != YES ]]; then exit 0; fi
 # LEGACY
-LEGACY=$BACKUP_FOLDER/*$EXT
+LEGACY="$BACKUP_FOLDER/*$EXT"
 for file in $LEGACY; do
     if [[ "$file" == "$LEGACY" ]]; then break; fi
     date=${file#*}
     date=${date%$EXT}
-    date=`echo $date| rev `
+    date=$(echo "$date" | rev )
     date=${date:0:19}
-    date=`echo $date| rev `
+    date=$(echo "$date" | rev )
     tmp_date=$date
     date=${date//./}
-    date=$(date -d ${tmp_date:0:4}-${tmp_date:5:2}-${tmp_date:8:2}T${tmp_date:11:2}:${tmp_date:14:2}:${tmp_date:17:2}+00:00 +%s)
+    date=$(date -d "${tmp_date:0:4}-${tmp_date:5:2}-${tmp_date:8:2}T${tmp_date:11:2}:${tmp_date:14:2}:${tmp_date:17:2}+00:00 +%s")
     if [[ $date -le $THRESHOLD ]]; then
         echo "Removing $file"
         if [[ "$TEST" == NO ]]; then
-            rm $file
+            rm "$file"
         fi
     else
         echo "DETECTED LEGACY FILE \"$file\""
-        if [ ${tmp_date:11:2} == "04" ]; then
+        if [ "${tmp_date:11:2}" == "04" ]; then
             echo "LEGACY FILE is AUTOMATIC"
             NEW_FILE_PREFIX=AUTOMATIC_
         else
@@ -150,7 +150,7 @@ for file in $LEGACY; do
         NEW_FILE=${BACKUP_FOLDER}/${NEW_FILE_PREFIX}FULL_BACKUP_$(date -d "@${date}" $TIMESTAMP_FORMAT)${EXT}
         echo "RENAME LEGACY FILE to \"$NEW_FILE\""
         if [[ "$TEST" == NO ]]; then
-            mv $file $NEW_FILE
+            mv "$file" "$NEW_FILE"
         fi
     fi
 done
